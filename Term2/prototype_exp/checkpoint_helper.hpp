@@ -2,11 +2,11 @@
 
 #include <bits/stdc++.h>
 
-class CheckpointHelper {
-public:
-    struct promise_type {
-        void* resume_point;    
-    };
+struct CheckpointHelper {
+    std::string filename;
+    void* resume_point;    
+
+    CheckpointHelper(std::string filename) : filename(filename) {}
 
     /**
      * @brief 
@@ -14,11 +14,11 @@ public:
      * @param checkpointer 
      * @param filename 
      */
-    static void serialize(promise_type& checkpointer, std::string filename) {
+    virtual void serialize() {
         std::ostringstream stream;
         char null = 0;
 
-        stream.write(reinterpret_cast<char*>(&checkpointer.resume_point), sizeof checkpointer.resume_point);
+        stream.write(reinterpret_cast<char*>(&resume_point), sizeof resume_point);
         stream.write(&null, 1);
 
         std::ofstream storage;
@@ -33,14 +33,18 @@ public:
      * @param checkpointer 
      * @param filename 
      */
-    static void deserialize(promise_type& checkpointer, std::string filename) {
+    virtual void deserialize() {
         std::ifstream storage(filename);
         if (storage.fail()) {
             // TODO: Format the runtime error message string
             throw std::runtime_error("File not exist exception");
         }
 
-        storage.read(reinterpret_cast<char*>(&checkpointer.resume_point), sizeof checkpointer.resume_point);
+        storage.read(reinterpret_cast<char*>(&resume_point), sizeof resume_point);
         storage.close();
+    }
+
+    bool is_file_exists() {
+        return std::filesystem::exists(filename);
     }
 };
