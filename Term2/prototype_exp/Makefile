@@ -1,7 +1,7 @@
 CXX=g++-10
 
 all:
-	$(CXX) main.cpp -fcoroutines -std=c++17 program.cpp
+	$(CXX) -fcoroutines -std=c++17  -pthread program.cpp
 
 clean:
 	rm -f checkpoint.data a.out
