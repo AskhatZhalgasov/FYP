@@ -18,7 +18,7 @@ public:
             return Task { std::coroutine_handle<promise_type>::from_promise(*this) };
         }
 
-        std::suspend_always initial_suspend() { return {}; } 
+        std::suspend_never initial_suspend() { return {}; }
         std::suspend_always final_suspend() noexcept { return {}; }
         void unhandled_exception() { abort(); }
 
