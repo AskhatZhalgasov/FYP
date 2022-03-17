@@ -27,7 +27,6 @@
 #define suspend_with(checkpoint, pool) \
   label_suspend_with(checkpoint, pool, unique_label)
 
-
 Task AlphaAsync(std::string filename, Threadpool& pool) {
   // because we can't access promise_type within coroutine body
   // this is a hook to get return point address, then jump to it
@@ -38,25 +37,27 @@ Task AlphaAsync(std::string filename, Threadpool& pool) {
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   std::cout << "PHASE 1 with thread id: " << std::this_thread::get_id() << "\n";
   suspend_with(checkpointer, pool);
+  getchar();
 
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   std::cout << "PHASE 2 with thread id: " << std::this_thread::get_id() << "\n";
   suspend_with(checkpointer, pool);
+  getchar();
 
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   std::cout << "PHASE 3 with thread id: " << std::this_thread::get_id() << " [FINAL!]\n";
   suspend_with(checkpointer, pool);
+  getchar();
 }
 
 int main() {
-  Threadpool pool{0};
+  Threadpool pool{2};
   auto coro = AlphaAsync("checkpoint.data", pool);
 
-  while(!coro.finished()) {
-    coro.resume();
-    getchar(); // can simulate crash throug at this point
-  }
-  std::cout << "exited from coroutine\n";
+  // TODO: Check if a task if executed completely and then suspend/resume
+  //       instead of relying on sleep_for().
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000000));
+  std::cout << "Inside Main Function with thread_id: " << std::this_thread::get_id() << "\n";
 
   return 0;
 }
