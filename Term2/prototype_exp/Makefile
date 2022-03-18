@@ -1,7 +1,7 @@
 CXX=g++-10
 
 all:
-	$(CXX) -fcoroutines -std=c++17  -pthread program.cpp
+	$(CXX) -std=c++20 program.cpp -fcoroutines -pthread -o prototype_sample
 
 clean:
-	rm -f checkpoint.data a.out
+	rm -f checkpoint.data prototype_sample

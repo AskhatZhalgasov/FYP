@@ -11,12 +11,12 @@
 class Threadpool {
 public:
     explicit Threadpool(const std::size_t threadCount) {
-        for (std::size_t i = 0; i < threadCount; ++i) {
-            std::thread worker_thread([this]() {
-                this->thread_loop();
-            });
-            m_threads.push_back(std::move(worker_thread));
-        }
+      for (std::size_t i = 0; i < threadCount; ++i) {
+          std::thread worker_thread([this]() {
+              this->thread_loop();
+          });
+          m_threads.push_back(std::move(worker_thread));
+      }
     }
 
     ~Threadpool() {

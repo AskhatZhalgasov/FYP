@@ -4,6 +4,7 @@
 #include "checkpoint_helper.hpp"
 #include "task.hpp"
 #include "threadpool.hpp"
+#include "sync_wait.hpp"
 
 #define named_label(a, b) concat(a, b)
 
@@ -27,10 +28,22 @@
 #define suspend_with(checkpoint, pool) \
   label_suspend_with(checkpoint, pool, unique_label)
 
+template<typename PromiseType>
+struct GetCheckpoint {
+  CheckpointHelper* _checkpointer;
+  bool await_ready() { return false; } // says yes call await_suspend
+  bool await_suspend(std::coroutine_handle<PromiseType> handle) {
+    _checkpointer = &handle.promise().checkpointer;
+    return false;     // says no don't suspend coroutine after all
+  }
+  auto await_resume() { return _checkpointer; }
+};
+
 Task AlphaAsync(std::string filename, Threadpool& pool) {
   // because we can't access promise_type within coroutine body
   // this is a hook to get return point address, then jump to it
-  auto checkpointer = co_await Task::GetCheckpoint{};
+
+  auto checkpointer = co_await GetCheckpoint<Task::promise_type>{};
   if (checkpointer->resume_point != nullptr)
     goto *checkpointer->resume_point;
 
@@ -51,13 +64,10 @@ Task AlphaAsync(std::string filename, Threadpool& pool) {
 }
 
 int main() {
-  Threadpool pool{2};
-  auto coro = AlphaAsync("checkpoint.data", pool);
+  Threadpool pool{4};
+  auto task = AlphaAsync("checkpoint.data", pool);
 
-  // TODO: Check if a task if executed completely and then suspend/resume
-  //       instead of relying on sleep_for().
-  std::this_thread::sleep_for(std::chrono::milliseconds(1000000));
-  std::cout << "Inside Main Function with thread_id: " << std::this_thread::get_id() << "\n";
+  sync_wait(task); 
 
   return 0;
 }
