@@ -6,6 +6,10 @@ Run the code:
 ```console
 foo@bar:~$ g++-10 -fcoroutines -std=c++17 program.cpp
 ```
+### Reference:
+Libcoro library: https://github.com/jbaldwin/libcoro
+
+Threadpool article: https://blog.eiler.eu/posts/20210512/
 
 ## TODO:
 - [x] finished the prototype
