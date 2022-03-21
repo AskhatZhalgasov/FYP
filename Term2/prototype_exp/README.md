@@ -17,5 +17,5 @@ foo@bar:~$ g++-10 -fcoroutines -std=c++17 program.cpp
 - [x] integrate thread pool
 - [x] add syncronization
 - [ ] enable coroutines to accept other coroutines (think how?)  
-- [x] integrate data structure which holds the variables (*e.g.*, template)
+- [ ] integrate data structure which holds the variables (*e.g.*, template)
 
