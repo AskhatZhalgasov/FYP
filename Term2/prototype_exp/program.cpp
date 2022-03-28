@@ -1,9 +1,10 @@
 #include <bits/stdc++.h>
-#include <concepts>
-#include <coroutine>
-#include <exception>
 #include <chrono>
 #include <thread>
+#include "checkpoint_helper.hpp"
+#include "task.hpp"
+#include "threadpool.hpp"
+#include "sync_wait.hpp"
 
 #define named_label(a, b) concat(a, b)
 
@@ -18,121 +19,55 @@
 #define checkpoint_suspend() \
   checkpoint_with_label(unique_label)
 
-#define checkpoint_file "checkpoint.data"
+#define label_suspend_with(checkpoint, pool, label_name) \
+  checkpoint->resume_point = &&label_name; \
+  checkpoint->serialize(); \
+  co_await pool.schedule(); \
+  label_name:
 
-using namespace std;
-
-struct CoroutineWithCheckpoint {
-  struct Checkpoint {
-    void* resume_point;
-  };
-
-  static void serialize(Checkpoint &checkpoint, string filename) {
-    ostringstream stream;
-    stream.write(reinterpret_cast<char*>(&checkpoint.resume_point), sizeof checkpoint.resume_point);
-    char null = 0;
-    stream.write(&null, 1);
-
-    ofstream storage;
-    storage.open(filename);
-    storage << stream.str();
-    storage.close();
-  }
-
-  static void deserialize(Checkpoint& checkpoint, string filename) {
-    ifstream storage(filename);
-    if (storage.fail()) {
-      throw std::runtime_error("File not exist exception");
-    }
-
-    storage.read(reinterpret_cast<char*>(&checkpoint.resume_point), sizeof checkpoint.resume_point);
-    storage.close();
-  }
-
-};
-
-struct MyCoroutineObj : CoroutineWithCheckpoint {
-  struct promise_type {
-    
-    string checkpoint_filename;
-    Checkpoint checkpoint;
-
-    promise_type(string& filename) : checkpoint_filename(filename) {
-      if (filesystem::exists(checkpoint_filename)) {
-        deserialize(checkpoint, checkpoint_filename);
-      } 
-    }
-    
-    MyCoroutineObj get_return_object() {
-      return {
-        ._handle = coroutine_handle<promise_type>::from_promise(*this)
-      };
-    }
-
-    std::suspend_always initial_suspend() { return {}; } 
-    std::suspend_always final_suspend() noexcept { return {}; }
-    void unhandled_exception() { abort(); }
-
-    // address to serialize
-    std::suspend_always yield_value(void* resume_point) {
-      checkpoint.resume_point = resume_point; 
-      serialize(checkpoint, checkpoint_filename); 
-      return {};
-    }
-  }; 
-
-  coroutine_handle<promise_type> _handle;
-
-  bool finished() {
-    return _handle.done();
-  }
-
-  void resume() {
-    _handle.resume();
-  }
-};
+#define suspend_with(checkpoint, pool) \
+  label_suspend_with(checkpoint, pool, unique_label)
 
 template<typename PromiseType>
-struct GetResumePoint {
-  void* return_point;
+struct GetCheckpoint {
+  CheckpointHelper* _checkpointer;
   bool await_ready() { return false; } // says yes call await_suspend
-  bool await_suspend(std::coroutine_handle<PromiseType> h) {
-    return_point = h.promise().checkpoint.resume_point;
+  bool await_suspend(std::coroutine_handle<PromiseType> handle) {
+    _checkpointer = &handle.promise().checkpointer;
     return false;     // says no don't suspend coroutine after all
   }
-  void* await_resume() { return return_point; }
+  auto await_resume() { return _checkpointer; }
 };
 
-MyCoroutineObj AlphaAsync(std::string filename) {
+Task AlphaAsync(std::string filename, Threadpool& pool) {
   // because we can't access promise_type within coroutine body
   // this is a hook to get return point address, then jump to it
-  auto resume_point = co_await GetResumePoint<MyCoroutineObj::promise_type> {};
-  if (resume_point != nullptr)
-    goto *resume_point;
+
+  auto checkpointer = co_await GetCheckpoint<Task::promise_type>{};
+  if (checkpointer->resume_point != nullptr)
+    goto *checkpointer->resume_point;
 
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  std::cout << "PHASE 1\n";
-  checkpoint_suspend();
+  std::cout << "PHASE 1 with thread id: " << std::this_thread::get_id() << "\n";
+  suspend_with(checkpointer, pool);
+  getchar();
 
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  std::cout << "PHASE 2\n";
-  checkpoint_suspend();
+  std::cout << "PHASE 2 with thread id: " << std::this_thread::get_id() << "\n";
+  suspend_with(checkpointer, pool);
+  getchar();
 
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  std::cout << "PHASE 3 (final!)\n";
-  checkpoint_suspend();
+  std::cout << "PHASE 3 with thread id: " << std::this_thread::get_id() << " [FINAL!]\n";
+  suspend_with(checkpointer, pool);
+  getchar();
 }
 
-
 int main() {
+  Threadpool pool{4};
+  auto task = AlphaAsync("checkpoint.data", pool);
 
-  auto coro = AlphaAsync("checkpoint.data");
-
-  while(!coro.finished()) {
-    coro.resume();
-    getchar(); // can simulate crash throug at this point
-  }
-  cout << "exited from coroutine\n";
+  sync_wait(task); 
 
   return 0;
 }
