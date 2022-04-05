@@ -22,4 +22,4 @@ Threadpool article: https://blog.eiler.eu/posts/20210512/
 - [x] add syncronization
 - [ ] enable coroutines to accept other coroutines (think how?)  
 - [ ] integrate data structure which holds the variables (*e.g.*, template)
-
+- [ ] augment `.data` for each coroutine name
