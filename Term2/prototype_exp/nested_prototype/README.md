@@ -54,7 +54,7 @@ For better understanding of the code and better intution on the workflow, the fo
 
 - `await <=> co_await`, in other words, `co_await` will await until it the corotouine triggered will complete fully. 
    
-    This allows to get similar usage as in the C# library. Why we need to wait until coroutines completes? Well see the **TLDR** section above.
+    This allows to get similar usage as in the C# library. Why we need to wait until coroutines completes? See the **TLDR** section above.
 - Semantically, each task at any time can be in one of the states, `[Blocked, Running, Finished]`.
 - Threadpool only contains `Running` tasks and each thread picks any runnable task.
 - Task is added into the threadpool with state `Running` in the initial suspend point.
