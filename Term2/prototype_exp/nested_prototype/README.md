@@ -37,7 +37,7 @@ task B {
 }
 
 task A {
-  co_await B;
+  await B;
 }
 ```
 The async methods nested within each other (look at point {num} in the above code):
