@@ -21,21 +21,18 @@ After carefully reviewing [library](https://github.com/ljw1004/blog/tree/master/
 
 If its already done in synchronous fashion, then return the result. 
 Otherwise, call the current continuation via `OnCompleted` callback.
-    
-    
-### Library structure:
-- Similarly, `await <=> co_await`, in other words, `co_await` will await until it the corotouine triggered will complete fully. This allows to get similar usage as in the C# library.
 
-Moreover, if we observe, carefully, we can notice some special consequence of coroutines execution (if we adopt similar behavior as `await/async` provides in C#).
+If we observe, carefully, we can notice some special consequence of execution with `await/async` in C#.
 
 Suppose now we have task C and D in the body of task B:
-```cpp=
+
+```C#
 task B {
 // point 1
-  co_await task C; // point 2
+  await task C; // point 2
 // point 3
   ... 
-  co_await task D; // point 4
+  await task D; // point 4
 // point 5
 }
 
@@ -43,14 +40,28 @@ task A {
   co_await B;
 }
 ```
-The coroutines nested within each other (look at point {num} in the above code):
+The async methods nested within each other (look at point {num} in the above code):
 * Point 1: [A, B]
 * Point 2: [A, B, C]
 * Point 3: [A, B]
 * Point 4: [A, B, D]
 * Point 5: [A, B]
 
-The execution happens in the stack-line manner. This allows to get some order, i.e., after task C is finished task A is enabled to run.
+The execution happens in the stack-line manner. This allows to get some order, i.e., only after task C is finished task A is enabled to run.
+
+### Library structure:
+For better understanding of the code and better intution on the workflow, the following assumptions (concepts) are implied in the library.
+
+- `await <=> co_await`, in other words, `co_await` will await until it the corotouine triggered will complete fully. 
+   
+    This allows to get similar usage as in the C# library. Why we need to wait until coroutines completes? Well see the **TLDR** section above.
+- Semantically, each task at any time can be in one of the states, `[Blocked, Running, Finished]`.
+- Threadpool only contains `Running` tasks and each thread picks any runnable task.
+- Task is added into the threadpool with state `Running` in the initial suspend point.
+- Task is labeled as `Finished` when it reached final_suspend point.
+- `co_await some_other_task()` makes current coroutine `Blocked`, so that only `some_other_task()` can be runned. Meanwhile, `some_other_task()` remembers current coroutine as its continuation.
+- When coroutine reaches final suspend it not only change label to `Finished`, but also converts the continuation coroutine into the `Running` state and adds it to threadpool.
+
 
 ## TODO
 - [ ] implement synchronization barrier (in the main function) via existing mechanisms (for example, create Task barrier and just co_await the alpha async task).
