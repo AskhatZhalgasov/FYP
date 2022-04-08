@@ -56,7 +56,7 @@ For better understanding of the code and better intution on the workflow, the fo
    
     This allows to get similar usage as in the C# library. Why we need to wait until coroutines completes? See the **TLDR** section above.
 - Semantically, each task at any time can be in one of the states, `[Blocked, Running, Finished]`.
-- Threadpool only contains `Running` tasks and each thread picks any runnable task.
+- Threadpool only contains `Running` tasks and each thread picks only runnable task.
 - Task is added into the threadpool with state `Running` in the initial suspend point.
 - Task is labeled as `Finished` when it reaches final_suspend point.
 - `co_await some_other_task()` makes current coroutine `Blocked`, so that only `some_other_task()` can be runned. Meanwhile, `some_other_task()` remembers current coroutine as its continuation.
