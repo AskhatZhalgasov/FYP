@@ -44,33 +44,15 @@ public:
     std::condition_variable m_cond;
     std::queue<std::pair<std::string, std::coroutine_handle<>>> m_coros;
 
-    enum Status {
-      Blocked = 0, 
-      Running, 
-      Finished
-    };
-    std::mutex stat_mt;
-    std::unordered_map<std::string, Status> status; 
-
-    void set_status(std::string name, Status new_status) {
-      std::unique_lock<std::mutex> lk(stat_mt);
-      status[name] = new_status;
-    }
-
-    Status get_status(std::string name) {
-      std::unique_lock<std::mutex> lk(stat_mt);
-      auto answer = status.at(name);
-      return answer;
-    }
-
     bool m_stop_thread = false;
 
     void thread_loop() {
         while (!m_stop_thread) {
+            //std::cout << "[spinning thread], id: " << std::this_thread::get_id() << ", sz(m_coros): " << m_coros.size() << ", m_stop_thread: " << m_stop_thread << std::endl;
             std::unique_lock<std::mutex> lock(m_mutex);
 
             while (!m_stop_thread && m_coros.size() == 0) {
-                m_cond.wait_for(lock, std::chrono::microseconds(100));
+              m_cond.wait_for(lock, std::chrono::microseconds(100));
             }
 
             if (m_stop_thread) {
@@ -80,13 +62,8 @@ public:
             auto [name, coro] = m_coros.front();
             m_coros.pop();
             lock.unlock();
-            auto state = get_status(name);
-            //std::cout << "[task pool], thread_id: " << std::this_thread::get_id() << ", size: " << m_coros.size() << ", name: " << name << ", state: " << state << std::endl;
-            if (state == Status::Running) {
-              coro.resume();
-            } else if (state == Status::Blocked) {
-              this->enqueue_task(name, coro);
-            }   
+           // std::cout << "[task pool], thread_id: " << std::this_thread::get_id() << ", size: " << m_coros.size() << ", name: " << name << ", coro(address): " << coro.address() << std::endl;
+            coro.resume();
         }
     }
 
@@ -94,7 +71,7 @@ public:
         std::unique_lock<std::mutex> lock(m_mutex);
         m_coros.emplace(make_pair(name, coro));
         m_cond.notify_one();
-//        std::cout << "[enqueue task], name: " << name << ", " << status[name] << std::endl;
+        //std::cout << "[enqueue task], name: " << name << ", thread: " << std::this_thread::get_id() << ", coro(address): " << coro.address() << std::endl;
     }
 
     void shutdown() {
