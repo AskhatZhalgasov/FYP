@@ -2,6 +2,7 @@
 
 #include <coroutine>
 #include "threadpool.hpp"
+#include "checkpoint_helper.hpp"
 
 class Task;
 
@@ -11,24 +12,20 @@ struct task_promise {
   CheckpointHelper checkpointer;
   Threadpool* m_threadpool;
   std::string name;
-  enum Status {
-    Blocked = 0, 
-    Running, 
-    Finished
-  } status;
   
   void set_status(Status status) {
-    this->status = status;
+    this->checkpointer.status = status;
   }
 
   Status get_status() {
-    return status;
+    return this->checkpointer.status;
   }
 
   explicit task_promise(std::string filename, Threadpool* pool) : name(filename), checkpointer(filename), m_threadpool(pool) {
     set_status(Status::Running);
-  //  std::cout << "constructor called, filename: " << filename << std::endl;
+    //std::cout << "constructor called, filename: " << filename << std::endl;
     if (checkpointer.is_file_exists()) {
+      //std::cout << "deserialization called\n";
       checkpointer.deserialize();
     }
   }
@@ -43,7 +40,7 @@ struct task_promise {
 
       void await_suspend(std::coroutine_handle<task_promise> handle) {
         auto promise = handle.promise();
-//        std::cout << "[initial suspend] suspended, thread: " << std::this_thread::get_id() << std::endl;
+        //std::cout << "[initial suspend] suspended, thread: " << std::this_thread::get_id() << std::endl;
         promise.m_threadpool->enqueue_task(promise.name, handle);  
       }
 
@@ -57,10 +54,10 @@ struct task_promise {
   std::suspend_always final_suspend() noexcept { 
     
     set_status(Status::Finished);
-    // in case its primary coroutine (i.e., called from main)
+    this->checkpointer.serialize();
+    //std::cout << "obtained checkpointer\n";
     if (this->m_continuation) { 
-//      std::cout << "enabling continuation, from: " << this->name << ", to: " << m_continuation.promise().name << std::endl;
-      set_status(Status::Running);
+      this->m_continuation.promise().set_status(Status::Running);
       this->m_threadpool->enqueue_task(m_continuation.promise().name, m_continuation);
     }
     return {}; 
@@ -103,8 +100,7 @@ public:
       bool await_ready() { 
         auto threadpool = this->m_handle.promise().m_threadpool;
         auto promise = this->m_handle.promise();
-     //   std::cout << "[operator co_await] " << threadpool->get_status(promise.name) << std::endl;
-        return promise.get_status() == promise.Status::Finished; 
+        return promise.get_status() == Status::Finished; 
       }
       
       void await_suspend(std::coroutine_handle<promise_type> awaiting_coroutine) noexcept {
@@ -113,12 +109,11 @@ public:
 
         auto awaiting_promise = awaiting_coroutine.promise();
         auto threadpool = awaiting_promise.m_threadpool;
-        awaiting_promise.set_status(awaiting_promise.Status::Blocked);
-      //  std::cout << "suspending thread id: " << std::this_thread::get_id() << std::endl;
+        awaiting_promise.set_status(Status::Blocked);
+        awaiting_promise.checkpointer.serialize();
       }
 
       void await_resume() noexcept { 
-      //  std::cout << "resuming from coroutine: " << m_handle.promise().name << std::endl;
       }
 
       std::coroutine_handle<promise_type> m_handle;
@@ -128,7 +123,8 @@ public:
 
   bool finished() {
     auto promise = m_handle.promise();
-    return promise.get_status() == promise.Status::Finished;
+    //std::cout << "[Finished], status: " << promise.get_status() << ", address: " << m_handle.address() << std::endl;
+    return promise.get_status() == Status::Finished;
   }
 
 private:

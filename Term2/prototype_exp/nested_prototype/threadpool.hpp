@@ -23,21 +23,6 @@ public:
         shutdown();
     }
 
-    /*
-    auto schedule() {
-        struct awaiter {
-            Threadpool* m_threadpool;
-
-            constexpr bool await_ready() const noexcept { return false; }
-            constexpr void await_resume() const noexcept { }
-            void await_suspend(std::coroutine_handle<promise_type> coro) const noexcept {
-                m_threadpool->enqueue_task(coro);
-            }
-        };
-        return awaiter{this};
-    }
-    */
-
     std::list<std::thread> m_threads;
 
     std::mutex m_mutex;
@@ -48,7 +33,7 @@ public:
 
     void thread_loop() {
         while (!m_stop_thread) {
-            //std::cout << "[spinning thread], id: " << std::this_thread::get_id() << ", sz(m_coros): " << m_coros.size() << ", m_stop_thread: " << m_stop_thread << std::endl;
+         //   std::cout << "[spinning thread], id: " << std::this_thread::get_id() << ", sz(m_coros): " << m_coros.size() << ", m_stop_thread: " << m_stop_thread << std::endl;
             std::unique_lock<std::mutex> lock(m_mutex);
 
             while (!m_stop_thread && m_coros.size() == 0) {
