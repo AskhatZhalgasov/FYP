@@ -68,15 +68,11 @@ Task AlphaAsync(std::string filename, Threadpool* pool) {
 
 int main() {
   Threadpool pool{1};
-  auto primary_task = AlphaAsync("alpha_async.data", &pool);
 
-  std::cout << "in the main\n";
-  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+  auto task = AlphaAsync("alpha_async.data", &pool);
+  task.wait_completion();
 
-// may trigger seg fault
-//  while(!primary_task.finished());
-
-  std::cout << "Finished!\n";
+  std::puts("finished\n");
 
   return 0;
 }

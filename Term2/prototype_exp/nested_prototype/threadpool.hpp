@@ -1,7 +1,7 @@
 #pragma once
 
-#include <condition_variable>
-#include <coroutine>
+#include <condition_variable> 
+#include <coroutine> 
 #include <cstdint>
 #include <list>
 #include <mutex>
@@ -33,10 +33,11 @@ public:
 
     void thread_loop() {
         while (!m_stop_thread) {
-         //   std::cout << "[spinning thread], id: " << std::this_thread::get_id() << ", sz(m_coros): " << m_coros.size() << ", m_stop_thread: " << m_stop_thread << std::endl;
             std::unique_lock<std::mutex> lock(m_mutex);
+    //        std::cout << "[spinning thread], id: " << std::this_thread::get_id() << ", sz(m_coros): " << m_coros.size() << ", m_stop_thread: " << m_stop_thread << std::endl;
 
             while (!m_stop_thread && m_coros.size() == 0) {
+              //std::cout << "[spinning thread], waiting, threadId: " << std::this_thread::get_id() << std::endl;
               m_cond.wait_for(lock, std::chrono::microseconds(100));
             }
 
@@ -47,7 +48,7 @@ public:
             auto [name, coro] = m_coros.front();
             m_coros.pop();
             lock.unlock();
-           // std::cout << "[task pool], thread_id: " << std::this_thread::get_id() << ", size: " << m_coros.size() << ", name: " << name << ", coro(address): " << coro.address() << std::endl;
+     //       std::cout << "[task pool], thread_id: " << std::this_thread::get_id() << ", size: " << m_coros.size() << ", name: " << name << ", coro(address): " << coro.address() << std::endl;
             coro.resume();
         }
     }
@@ -55,8 +56,15 @@ public:
     void enqueue_task(std::string name, std::coroutine_handle<> coro) noexcept {
         std::unique_lock<std::mutex> lock(m_mutex);
         m_coros.emplace(make_pair(name, coro));
+    //    std::cout << "[enqueue task], name: " << name << ", thread: " << std::this_thread::get_id() << ", coro(address): " << coro.address() << std::endl;
+        lock.unlock();
         m_cond.notify_one();
-        //std::cout << "[enqueue task], name: " << name << ", thread: " << std::this_thread::get_id() << ", coro(address): " << coro.address() << std::endl;
+        /*{
+          std::cout << "[returning]\n";
+          auto [name, coro_new] = m_coros.front();
+          m_coros.pop();
+//          coro_new.resume(); // resume 0x55555557beb0
+        }*/
     }
 
     void shutdown() {

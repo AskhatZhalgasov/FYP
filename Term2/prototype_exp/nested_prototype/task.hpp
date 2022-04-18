@@ -3,11 +3,11 @@
 #include <coroutine>
 #include "threadpool.hpp"
 #include "checkpoint_helper.hpp"
+#include "fire_once_event.hpp"
 
 class Task;
 
 struct task_promise;
-
 struct task_promise {
   CheckpointHelper checkpointer;
   Threadpool* m_threadpool;
@@ -40,25 +40,32 @@ struct task_promise {
 
       void await_suspend(std::coroutine_handle<task_promise> handle) {
         auto promise = handle.promise();
-        //std::cout << "[initial suspend] suspended, thread: " << std::this_thread::get_id() << std::endl;
-        promise.m_threadpool->enqueue_task(promise.name, handle);  
+        //std::cout << "[initial suspend] suspended, thread: " << std::this_thread::get_id() << ", handle address: " << handle.address() << std::endl;
+        //promise.m_threadpool->enqueue_task(promise.name, handle);  
       }
 
       void await_resume() {
-//        std::cout << "[initial suspend] resuming coroutine: " << std::this_thread::get_id() << std::endl;
+        //std::cout << "[initial suspend] resuming coroutine: " << std::this_thread::get_id() << std::endl;
       }
     };
     return awaiter{}; 
   }
+/**/
+
+  //std::suspend_always initial_suspend() noexcept { return {}; }
 
   std::suspend_always final_suspend() noexcept { 
     
     set_status(Status::Finished);
     this->checkpointer.serialize();
-    //std::cout << "obtained checkpointer\n";
+//    std::cout << "task: " << this->name << " address: " << this << " " << (this->m_continuation > 0) << (this->m_event > 0) << "\n";
     if (this->m_continuation) { 
       this->m_continuation.promise().set_status(Status::Running);
+      //std::cout << "releasing: " << this->m_continuation.promise().name << "\n";
       this->m_threadpool->enqueue_task(m_continuation.promise().name, m_continuation);
+    } else if (this->m_event) {
+      //std::cout << "firing signal\n";
+      this->m_event->set();
     }
     return {}; 
   }
@@ -77,7 +84,7 @@ struct task_promise {
     m_continuation = continuation;
   }
 
-private:
+  fire_once_event* m_event = nullptr;
   std::coroutine_handle<task_promise> m_continuation; 
 };
 
@@ -105,12 +112,15 @@ public:
       
       void await_suspend(std::coroutine_handle<promise_type> awaiting_coroutine) noexcept {
         
-        this->m_handle.promise().set_continuation(awaiting_coroutine);
-
-        auto awaiting_promise = awaiting_coroutine.promise();
-        auto threadpool = awaiting_promise.m_threadpool;
+        // was copied before putting reference, lmao, stupid bug
+        auto& promise = this->m_handle.promise();
+        promise.set_continuation(awaiting_coroutine);
+        //std::cout << "[await_suspend], " << promise.name << ", continuation: " << promise.m_continuation.promise().name << std::endl;
+        auto& awaiting_promise = awaiting_coroutine.promise();
         awaiting_promise.set_status(Status::Blocked);
         awaiting_promise.checkpointer.serialize();
+
+        promise.m_threadpool->enqueue_task(promise.name, m_handle);  
       }
 
       void await_resume() noexcept { 
@@ -127,13 +137,35 @@ public:
     return promise.get_status() == Status::Finished;
   }
 
+  bool wait_completion();
+  void start();
+
 private:
   std::coroutine_handle<promise_type> m_handle;
 };
 
 inline Task task_promise::get_return_object() noexcept {
   auto handle = std::coroutine_handle<task_promise>::from_promise(*this); 
-//  std::cout << "[get_return_object] " << checkpointer.filename << std::endl;
+  //std::cout << "[get_return_object] " << this->name << ", address: " << handle.address() << ", thread_id: " << std::this_thread::get_id() << std::endl;
   return Task{handle};
 }
 
+void Task::start() {
+  auto promise = m_handle.promise();
+  //std::cout << "[in start], m_handle.address: " << m_handle.address() << std::endl;
+  promise.m_threadpool->enqueue_task(promise.name, m_handle);
+}
+
+bool Task::wait_completion() {
+  fire_once_event event;
+
+  auto& promise = m_handle.promise();
+  promise.m_event = &event;
+  this->start();
+
+  event.wait();
+
+  std::cout << "completed\n";
+
+  return true;
+}
