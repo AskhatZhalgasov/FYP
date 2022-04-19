@@ -1,4 +1,4 @@
-# Nested coroutine framework 
+# [Final] Nested coroutine framework 
 This is more powerful version of the framework which enabled to create nested coroutines structures.
 
 Look into `nested_program.cpp` for more details. The execution is following
@@ -62,6 +62,8 @@ For better understanding of the code and better intution on the workflow, the fo
 - `co_await some_other_task()` makes current coroutine `Blocked`, so that only `some_other_task()` can be runned. Meanwhile, `some_other_task()` remembers current coroutine as its continuation.
 - When coroutine reaches final suspend it not only change label to `Finished`, but also converts the continuation coroutine into the `Running` state and adds it to threadpool.
 
+### Syncronization
+`.wait_completion` function which is available is the syncronization method for `Task` structures.
 
 ## TODO
 - [ ] implement synchronization barrier (in the main function) via existing mechanisms (for example, create Task barrier and just co_await the `AlphaAsync` task).
