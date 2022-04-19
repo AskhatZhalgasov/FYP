@@ -1,0 +1,10 @@
+[spinning thread], id: 140583792260864, sz(m_coros): 0, m_stop_thread: 0
+constructor called, filename: alpha_async.data
+deserialization called
+[spinning thread], id: 140583783868160, sz(m_coros): 0, m_stop_thread: 0
+[spinning thread], id: 140583767082752, sz(m_coros): 0, m_stop_thread: 0
+[initial suspend] suspended, thread: 140583792265024
+[enqueue task], name: alpha_async.data, thread: 140583792265024, coro(address): 0x562ed54986d0
+in the main
+[Finished], status: 0, address: 0x562ed54986d0
+[Finished], status: 0, address: 0x562ed54986d0
