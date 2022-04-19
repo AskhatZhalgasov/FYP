@@ -66,6 +66,6 @@ For better understanding of the code and better intution on the workflow, the fo
 `.wait_completion` function which is available is the syncronization method for `Task` structures.
 
 ## TODO
-- [ ] implement synchronization barrier (in the main function) via existing mechanisms (for example, create Task barrier and just co_await the `AlphaAsync` task).
-- [ ] add checkpointing (should be very easy, since the sceleton is constructed)
+- [x] implement synchronization barrier (in the main function) via existing mechanisms (for example, create Task barrier and just co_await the `AlphaAsync` task).
+- [x] add checkpointing (should be very easy, since the sceleton is constructed)
 - [ ] refactor ideas?
