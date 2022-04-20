@@ -11,7 +11,7 @@ foo@bar:~$ ./prototype_sample
 [AlphaAsync] PHASE 1 with thread id: 140737348220672
 [BetaAsync] PHASE 1 with thread id: 140737348220672
 ^C /* waiting for char input, this is done to imitate crash */
-foo@bar:~$ ./prototype_sample
+foo@bar:~$ ./prototype_sample /* restart the program */
 [BetaAsync] after checkpoint with thread id: 140737348220672
 [AlphaAsync] PHASE 2 with thread id: 140737348220672
 completed
