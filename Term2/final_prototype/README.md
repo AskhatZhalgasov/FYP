@@ -1,16 +1,21 @@
 # [Final] Nested coroutine framework 
+
 This is more powerful version of the framework which enabled to create nested coroutines structures.
 
-Look into `nested_program.cpp` for more details. The execution is following
+## Simple Demo
+
+Look into `checkpoint_program.cpp` for more details. The execution is following
 ```console
-foo@bar:~$ g++-10 -fcoroutines -std=c++17 nested_program.cpp -o prototype_sample
+foo@bar:~$ g++-10 -fcoroutines -std=c++17 checkpoint_program.cpp -o prototype_sample
 foo@bar:~$ ./prototype_sample
-[AlphaAsync] PHASE 1 with thread id: 140269264783104
-[BetaAsync] PHASE 1 with thread id: 140269264783104
-[ThetaAsync] PHASE 1 with thread id: 140269264783104
-[BetaAsync] PHASE 2 with thread id: 140269264783104
-[AlphaAsync] PHASE 2 with thread id: 140269264783104
-Finished!
+[AlphaAsync] PHASE 1 with thread id: 140737348220672
+[BetaAsync] PHASE 1 with thread id: 140737348220672
+^C /* waiting for char input, this is done to imitate crash */
+foo@bar:~$ ./prototype_sample
+[BetaAsync] after checkpoint with thread id: 140737348220672
+[AlphaAsync] PHASE 2 with thread id: 140737348220672
+completed
+finished
 ```
 ## Context
 
