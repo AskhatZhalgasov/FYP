@@ -5,46 +5,23 @@
 #include "task.hpp"
 #include "threadpool.hpp"
 
-#define named_label(a, b) concat(a, b) 
-#define concat(a, b) a ## b
-#define unique_label named_label(label, __LINE__)
+Task ThetaAsync(std::string filename, Threadpool* pool) {
+  checkpoint_init();
 
-#define checkpoint_await_with_label(label_name, coro) \
-  label_name:                                   \
-  checkpointer->resume_point = &&label_name;    \
-  co_await coro;                                
-
-#define checkpoint_await(coro) \
-  checkpoint_await_with_label(unique_label, coro)
-
-#define checkpoint_with_label(label_name)     \
-  label_name:                                 \
-  checkpointer->resume_point = &&label_name;  \
-  checkpointer->serialize();
-
-#define checkpoint_save() \
-  checkpoint_with_label(unique_label)
-
-template<typename PromiseType> struct GetCheckpoint {
-  CheckpointHelper* _checkpointer;
-  bool await_ready() { return false; } // says yes call await_suspend
-  bool await_suspend(std::coroutine_handle<PromiseType> handle) {
-    _checkpointer = &handle.promise().checkpointer;
-    return false;     // says no don't suspend coroutine after all
-  }
-  auto await_resume() { return _checkpointer; }
-};
-
-
-Task BetaAsync(std::string filename, Threadpool* pool) {
-  auto checkpointer = co_await GetCheckpoint<Task::promise_type>{};
-  if (checkpointer->resume_point != nullptr)
-    goto *checkpointer->resume_point;
-
-  std::cout << "[BetaAsync] PHASE 1 with thread id: " << std::this_thread::get_id() << "\n";
+  std::cout << "[ThetaAsync] PHASE 1 with thread id: " << std::this_thread::get_id() << "\n";
 
   checkpoint_save(); 
   getchar(); // simulate crash
+
+  std::cout << "[ThetaAsync] after checkpoint with thread id: " << std::this_thread::get_id() << std::endl;
+}
+
+Task BetaAsync(std::string filename, Threadpool* pool) {
+  checkpoint_init();
+
+  std::cout << "[BetaAsync] PHASE 1 with thread id: " << std::this_thread::get_id() << "\n";
+
+  checkpoint_await(ThetaAsync("theta_async.data", pool));
 
   std::cout << "[BetaAsync] after checkpoint with thread id: " << std::this_thread::get_id() << std::endl;
 }
@@ -52,9 +29,7 @@ Task BetaAsync(std::string filename, Threadpool* pool) {
 Task AlphaAsync(std::string filename, Threadpool* pool) {
   // because we can't access promise_type within coroutine body
   // this is a hook to get return point address, then jump to it
-  auto checkpointer = co_await GetCheckpoint<Task::promise_type>{};
-  if (checkpointer->resume_point != nullptr)
-    goto *checkpointer->resume_point;
+  checkpoint_init();
 
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   std::cout << "[AlphaAsync] PHASE 1 with thread id: " << std::this_thread::get_id() << "\n";
@@ -62,7 +37,7 @@ Task AlphaAsync(std::string filename, Threadpool* pool) {
   // Task (awaitable) -> awaiter  
   checkpoint_await(BetaAsync("beta_async.data", pool));
 
-  std::cout << "[AlphaAsync] PHASE 2 with thread id: " << std::this_thread::get_id() << "\n";
+  std::cout << "[AlphaAsync] PHASE 3 with thread id: " << std::this_thread::get_id() << "\n";
   co_return;
 }
 
