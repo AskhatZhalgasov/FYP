@@ -167,7 +167,5 @@ bool Task::wait_completion() {
 
   event.wait();
 
-  std::cout << "completed\n";
-
   return true;
 }
