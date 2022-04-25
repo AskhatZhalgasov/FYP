@@ -21,11 +21,16 @@ struct task_promise {
     return this->checkpointer.status;
   }
 
-  explicit task_promise(std::string filename, Threadpool* pool) : name(filename), checkpointer(filename), m_threadpool(pool) {
+  explicit task_promise(Threadpool* pool) : m_threadpool(pool) {
     set_status(Status::Running);
-    //std::cout << "constructor called, filename: " << filename << std::endl;
+  //  std::cout << "constructor called, filename: " << filename << std::endl;
+  }
+
+  void set_name(std::string filename) {
+    name = filename;
+    checkpointer.set_filepath(filename);
     if (checkpointer.is_file_exists()) {
-      //std::cout << "deserialization called\n";
+    //  std::cout << "deserialization called\n";
       checkpointer.deserialize();
     }
   }
@@ -127,10 +132,7 @@ public:
       }
 
       std::coroutine_handle<promise_type> m_handle;
-    };
-    return awaiter{m_handle};
-  }
-
+    }; return awaiter{m_handle}; }
   bool finished() {
     auto promise = m_handle.promise();
     //std::cout << "[Finished], status: " << promise.get_status() << ", address: " << m_handle.address() << std::endl;
@@ -146,7 +148,7 @@ private:
 
 inline Task task_promise::get_return_object() noexcept {
   auto handle = std::coroutine_handle<task_promise>::from_promise(*this); 
-  //std::cout << "[get_return_object] " << this->name << ", address: " << handle.address() << ", thread_id: " << std::this_thread::get_id() << std::endl;
+//  std::cout << "[get_return_object] " << this->name << ", address: " << handle.address() << ", thread_id: " << std::this_thread::get_id() << std::endl;
   return Task{handle};
 }
 
