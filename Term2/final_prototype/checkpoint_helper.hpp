@@ -25,10 +25,21 @@ struct CheckpointHelper;
   checkpoint_with_label(unique_label)
 
 #define checkpoint_init() \
-  auto checkpointer = co_await GetCheckpoint<Task::promise_type>{}; \
-  if (checkpointer->resume_point != nullptr) \
+  auto my_promise = co_await GetPromise<Task::promise_type>{};      \
+  my_promise->set_name(std::string(__func__) + ".data");             \
+  auto checkpointer = &my_promise->checkpointer;                    \
+  if (checkpointer->resume_point != nullptr)                        \
     goto *checkpointer->resume_point; 
 
+template<typename PromiseType> struct GetPromise {
+  PromiseType* _promise;
+  bool await_ready() { return false; } // says yes call await_suspend
+  bool await_suspend(std::coroutine_handle<PromiseType> handle) {
+    _promise = &handle.promise();
+    return false;     // says no don't suspend coroutine after all
+  }
+  auto await_resume() { return _promise; }
+};
 
 template<typename PromiseType> struct GetCheckpoint {
   CheckpointHelper* _checkpointer;
@@ -51,8 +62,13 @@ struct CheckpointHelper {
     void* resume_point;    
     Status status;
 
+    CheckpointHelper() {}
+
     CheckpointHelper(std::string filename) : filepath(filename) {}
 
+    void set_filepath(std::string filepath) {
+      this->filepath = filepath;
+    }
     /**
      * @brief 
      * 
